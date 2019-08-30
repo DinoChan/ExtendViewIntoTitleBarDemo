@@ -39,6 +39,7 @@
               Background="Transparent">
             <TextBlock x:Name="AppName"
                        x:Uid="AppName"
+                       Text="ExtendViewIntoTitleBarDemo"
                        Margin="12,0,12,0"
                        HorizontalAlignment="Left"
                        VerticalAlignment="Center"

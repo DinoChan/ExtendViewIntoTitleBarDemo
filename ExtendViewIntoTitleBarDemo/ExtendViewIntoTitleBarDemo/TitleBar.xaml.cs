@@ -48,5 +48,100 @@ namespace ExtendViewIntoTitleBarDemo
         {
             throw new NotImplementedException();
         }
+
+
+       private void SetTitleBarVisibility()
+        {
+          LayoutRoot.Visibility = m_coreTitleBar->IsVisible || IsAlwaysOnTopMode ? ::Visibility::Visible : ::Visibility::Collapsed;
+        }
+
+        void TitleBar::SetTitleBarPadding()
+        {
+            double leftAddition = 0;
+            double rightAddition = 0;
+
+            if (this->FlowDirection == ::FlowDirection::LeftToRight)
+            {
+                leftAddition = m_coreTitleBar->SystemOverlayLeftInset;
+                rightAddition = m_coreTitleBar->SystemOverlayRightInset;
+            }
+            else
+            {
+                leftAddition = m_coreTitleBar->SystemOverlayRightInset;
+                rightAddition = m_coreTitleBar->SystemOverlayLeftInset;
+            }
+
+            this->LayoutRoot->Padding = Thickness(leftAddition, 0, rightAddition, 0);
+        }
+
+        void TitleBar::ColorValuesChanged(_In_ UISettings ^ /*sender*/, _In_ Object ^ /*e*/)
+        {
+            Dispatcher->RunAsync(CoreDispatcherPriority::Normal, ref new DispatchedHandler([this]() { SetTitleBarControlColors(); }));
+        }
+
+        void TitleBar::SetTitleBarControlColors()
+        {
+            auto applicationView = ApplicationView::GetForCurrentView();
+            if (applicationView == nullptr)
+            {
+                return;
+            }
+
+            auto applicationTitleBar = applicationView->TitleBar;
+            if (applicationTitleBar == nullptr)
+            {
+                return;
+            }
+
+            if (m_accessibilitySettings->HighContrast)
+            {
+                // Reset to use default colors.
+                applicationTitleBar->ButtonBackgroundColor = nullptr;
+                applicationTitleBar->ButtonForegroundColor = nullptr;
+                applicationTitleBar->ButtonInactiveBackgroundColor = nullptr;
+                applicationTitleBar->ButtonInactiveForegroundColor = nullptr;
+                applicationTitleBar->ButtonHoverBackgroundColor = nullptr;
+                applicationTitleBar->ButtonHoverForegroundColor = nullptr;
+                applicationTitleBar->ButtonPressedBackgroundColor = nullptr;
+                applicationTitleBar->ButtonPressedForegroundColor = nullptr;
+            }
+            else
+            {
+                Color bgColor = Colors::Transparent;
+                Color fgColor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlPageTextBaseHighBrush"))->Color;
+                Color inactivefgColor =
+                    safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlForegroundChromeDisabledLowBrush"))->Color;
+                Color hoverbgColor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlBackgroundListLowBrush"))->Color;
+                Color hoverfgColor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlForegroundBaseHighBrush"))->Color;
+                Color pressedbgColor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlBackgroundListMediumBrush"))->Color;
+                Color pressedfgCoolor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlForegroundBaseHighBrush"))->Color;
+                applicationTitleBar->ButtonBackgroundColor = bgColor;
+                applicationTitleBar->ButtonForegroundColor = fgColor;
+                applicationTitleBar->ButtonInactiveBackgroundColor = bgColor;
+                applicationTitleBar->ButtonInactiveForegroundColor = inactivefgColor;
+                applicationTitleBar->ButtonHoverBackgroundColor = hoverbgColor;
+                applicationTitleBar->ButtonHoverForegroundColor = hoverfgColor;
+                applicationTitleBar->ButtonPressedBackgroundColor = pressedbgColor;
+                applicationTitleBar->ButtonPressedForegroundColor = pressedfgCoolor;
+            }
+        }
+
+        void TitleBar::OnHighContrastChanged(_In_ AccessibilitySettings ^ /*sender*/, _In_ Object ^ /*args*/)
+        {
+            Dispatcher->RunAsync(CoreDispatcherPriority::Normal, ref new DispatchedHandler([this]() {
+                SetTitleBarControlColors();
+                SetTitleBarVisibility();
+            }));
+        }
+
+        void TitleBar::OnWindowActivated(_In_ Object ^ /*sender*/, _In_ WindowActivatedEventArgs ^ e)
+        {
+            VisualStateManager::GoToState(
+                this, e->WindowActivationState == CoreWindowActivationState::Deactivated ? WindowNotFocused->Name : WindowFocused->Name, false);
+        }
+
     }
+
+
+
 }
