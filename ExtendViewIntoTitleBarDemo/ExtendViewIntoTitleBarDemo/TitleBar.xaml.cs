@@ -6,6 +6,8 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel.Core;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.UI;
+using Windows.UI.Core;
 using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -14,6 +16,7 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using System.Collections.ObjectModel;
 
 //https://go.microsoft.com/fwlink/?LinkId=234236 上介绍了“用户控件”项模板
 
@@ -33,113 +36,158 @@ namespace ExtendViewIntoTitleBarDemo
             _coreTitleBar = CoreApplication.GetCurrentView().TitleBar;
 
             _coreTitleBar.ExtendViewIntoTitleBar = true;
-            Window.Current.SetTitleBar(BackgroundElement);
-
+     
             Loaded += OnLoaded;
             Unloaded += OnUnloaded;
+            Buttons.CollectionChanged += OnButtonsCollectionChanged;
         }
+
+        
+
+        public ObservableCollection<Button> Buttons { get; } = new ObservableCollection<Button>();
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            Window.Current.SetTitleBar(BackgroundElement);
+            // Register events
+            _coreTitleBar.IsVisibleChanged += OnIsVisibleChanged;
+            _coreTitleBar.LayoutMetricsChanged += OnLayoutMetricsChanged;
+
+            _uiSettings.ColorValuesChanged += OnColorValuesChanged;
+            _accessibilitySettings.HighContrastChanged += OnHighContrastChanged;
+            Window.Current.Activated += OnWindowActivated;
+            // Set properties
+            LayoutRoot.Height = _coreTitleBar.Height;
+            SetTitleBarControlColors();
+
+            SetTitleBarVisibility();
+            SetTitleBarPadding();
         }
+
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            // Unregister events
+            _coreTitleBar.LayoutMetricsChanged -= OnLayoutMetricsChanged;
+            _coreTitleBar.IsVisibleChanged -= OnIsVisibleChanged;
+            _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
+            _accessibilitySettings.HighContrastChanged -= OnHighContrastChanged;
+            Window.Current.Activated -= OnWindowActivated;
         }
 
 
-       private void SetTitleBarVisibility()
+        private void SetTitleBarVisibility()
         {
-          LayoutRoot.Visibility = m_coreTitleBar->IsVisible || IsAlwaysOnTopMode ? ::Visibility::Visible : ::Visibility::Collapsed;
+            LayoutRoot.Visibility = _coreTitleBar.IsVisible ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        void TitleBar::SetTitleBarPadding()
+        private void SetTitleBarPadding()
         {
             double leftAddition = 0;
             double rightAddition = 0;
 
-            if (this->FlowDirection == ::FlowDirection::LeftToRight)
+            if (FlowDirection == FlowDirection.LeftToRight)
             {
-                leftAddition = m_coreTitleBar->SystemOverlayLeftInset;
-                rightAddition = m_coreTitleBar->SystemOverlayRightInset;
+                leftAddition = _coreTitleBar.SystemOverlayLeftInset;
+                rightAddition = _coreTitleBar.SystemOverlayRightInset;
             }
             else
             {
-                leftAddition = m_coreTitleBar->SystemOverlayRightInset;
-                rightAddition = m_coreTitleBar->SystemOverlayLeftInset;
+                leftAddition = _coreTitleBar.SystemOverlayRightInset;
+                rightAddition = _coreTitleBar.SystemOverlayLeftInset;
             }
 
-            this->LayoutRoot->Padding = Thickness(leftAddition, 0, rightAddition, 0);
+            LayoutRoot.Padding = new Thickness(leftAddition, 0, rightAddition, 0);
         }
 
-        void TitleBar::ColorValuesChanged(_In_ UISettings ^ /*sender*/, _In_ Object ^ /*e*/)
+        private void OnIsVisibleChanged(CoreApplicationViewTitleBar sender, object args)
         {
-            Dispatcher->RunAsync(CoreDispatcherPriority::Normal, ref new DispatchedHandler([this]() { SetTitleBarControlColors(); }));
+            SetTitleBarVisibility();
         }
 
-        void TitleBar::SetTitleBarControlColors()
+        private void OnLayoutMetricsChanged(CoreApplicationViewTitleBar sender, object args)
         {
-            auto applicationView = ApplicationView::GetForCurrentView();
-            if (applicationView == nullptr)
-            {
-                return;
-            }
+            LayoutRoot.Height = _coreTitleBar.Height;
+            SetTitleBarPadding();
+        }
 
-            auto applicationTitleBar = applicationView->TitleBar;
-            if (applicationTitleBar == nullptr)
-            {
-                return;
-            }
+        private void OnColorValuesChanged(UISettings sender, Object e)
+        {
+            Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => { SetTitleBarControlColors(); });
+        }
 
-            if (m_accessibilitySettings->HighContrast)
+        private void SetTitleBarControlColors()
+        {
+            var applicationView = ApplicationView.GetForCurrentView();
+            if (applicationView == null)
+                return;
+
+            var applicationTitleBar = applicationView.TitleBar;
+            if (applicationTitleBar == null)
+                return;
+
+            if (_accessibilitySettings.HighContrast)
             {
                 // Reset to use default colors.
-                applicationTitleBar->ButtonBackgroundColor = nullptr;
-                applicationTitleBar->ButtonForegroundColor = nullptr;
-                applicationTitleBar->ButtonInactiveBackgroundColor = nullptr;
-                applicationTitleBar->ButtonInactiveForegroundColor = nullptr;
-                applicationTitleBar->ButtonHoverBackgroundColor = nullptr;
-                applicationTitleBar->ButtonHoverForegroundColor = nullptr;
-                applicationTitleBar->ButtonPressedBackgroundColor = nullptr;
-                applicationTitleBar->ButtonPressedForegroundColor = nullptr;
+                applicationTitleBar.ButtonBackgroundColor = null;
+                applicationTitleBar.ButtonForegroundColor = null;
+                applicationTitleBar.ButtonInactiveBackgroundColor = null;
+                applicationTitleBar.ButtonInactiveForegroundColor = null;
+                applicationTitleBar.ButtonHoverBackgroundColor = null;
+                applicationTitleBar.ButtonHoverForegroundColor = null;
+                applicationTitleBar.ButtonPressedBackgroundColor = null;
+                applicationTitleBar.ButtonPressedForegroundColor = null;
             }
             else
             {
-                Color bgColor = Colors::Transparent;
-                Color fgColor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlPageTextBaseHighBrush"))->Color;
-                Color inactivefgColor =
-                    safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlForegroundChromeDisabledLowBrush"))->Color;
-                Color hoverbgColor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlBackgroundListLowBrush"))->Color;
-                Color hoverfgColor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlForegroundBaseHighBrush"))->Color;
-                Color pressedbgColor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlBackgroundListMediumBrush"))->Color;
-                Color pressedfgCoolor = safe_cast < SolidColorBrush ^> (Application::Current->Resources->Lookup("SystemControlForegroundBaseHighBrush"))->Color;
-                applicationTitleBar->ButtonBackgroundColor = bgColor;
-                applicationTitleBar->ButtonForegroundColor = fgColor;
-                applicationTitleBar->ButtonInactiveBackgroundColor = bgColor;
-                applicationTitleBar->ButtonInactiveForegroundColor = inactivefgColor;
-                applicationTitleBar->ButtonHoverBackgroundColor = hoverbgColor;
-                applicationTitleBar->ButtonHoverForegroundColor = hoverfgColor;
-                applicationTitleBar->ButtonPressedBackgroundColor = pressedbgColor;
-                applicationTitleBar->ButtonPressedForegroundColor = pressedfgCoolor;
+                Color bgColor = Colors.Transparent;
+                //Color fgColor = ((SolidColorBrush)Application.Current.Resources["SystemControlPageTextBaseHighBrush"]).Color;
+                //Color inactivefgColor = ((SolidColorBrush)Application.Current.Resources["SystemControlForegroundChromeDisabledLowBrush"]).Color;
+                //Color hoverbgColor = ((SolidColorBrush)Application.Current.Resources["SystemControlBackgroundListLowBrush"]).Color;
+                //Color hoverfgColor = ((SolidColorBrush)Application.Current.Resources["SystemControlForegroundBaseHighBrush"]).Color;
+                //Color pressedbgColor = ((SolidColorBrush)Application.Current.Resources["SystemControlBackgroundListMediumBrush"]).Color;
+                //Color pressedfgColor = ((SolidColorBrush)Application.Current.Resources["SystemControlForegroundBaseHighBrush"]).Color;
+
+                Color fgColor = ((SolidColorBrush)Resources["ButtonBackgroundBrush"]).Color;
+                Color inactivefgColor = ((SolidColorBrush)Resources["ButtonInactiveForegroundBrush"]).Color;
+                Color hoverbgColor = ((SolidColorBrush)Resources["ButtonHoverBackgroundBrush"]).Color;
+                Color hoverfgColor = ((SolidColorBrush)Resources["ButtonHoverForegroundBrush"]).Color;
+                Color pressedbgColor = ((SolidColorBrush)Resources["ButtonPressedBackgroundBrush"]).Color;
+                Color pressedfgColor = ((SolidColorBrush)Resources["ButtonPressedForegroundBrush"]).Color;
+                applicationTitleBar.ButtonBackgroundColor = bgColor;
+                applicationTitleBar.ButtonForegroundColor = fgColor;
+                applicationTitleBar.ButtonInactiveBackgroundColor = bgColor;
+                applicationTitleBar.ButtonInactiveForegroundColor = inactivefgColor;
+                applicationTitleBar.ButtonHoverBackgroundColor = hoverbgColor;
+                applicationTitleBar.ButtonHoverForegroundColor = hoverfgColor;
+                applicationTitleBar.ButtonPressedBackgroundColor = pressedbgColor;
+                applicationTitleBar.ButtonPressedForegroundColor = pressedfgColor;
             }
         }
 
-        void TitleBar::OnHighContrastChanged(_In_ AccessibilitySettings ^ /*sender*/, _In_ Object ^ /*args*/)
+        private void OnHighContrastChanged(AccessibilitySettings sender, Object args)
         {
-            Dispatcher->RunAsync(CoreDispatcherPriority::Normal, ref new DispatchedHandler([this]() {
+            Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
                 SetTitleBarControlColors();
                 SetTitleBarVisibility();
-            }));
+            });
         }
 
-        void TitleBar::OnWindowActivated(_In_ Object ^ /*sender*/, _In_ WindowActivatedEventArgs ^ e)
+        private void OnWindowActivated(Object sender, WindowActivatedEventArgs e)
         {
-            VisualStateManager::GoToState(
-                this, e->WindowActivationState == CoreWindowActivationState::Deactivated ? WindowNotFocused->Name : WindowFocused->Name, false);
+            VisualStateManager.GoToState(
+                this, e.WindowActivationState == CoreWindowActivationState.Deactivated ? WindowNotFocused.Name : WindowFocused.Name, false);
         }
 
+        private void OnButtonsCollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            ItemsPanel.Children.Clear();
+            foreach (var button in Buttons)
+            {
+                ItemsPanel.Children.Add(button);
+            }
+        }
     }
 
 

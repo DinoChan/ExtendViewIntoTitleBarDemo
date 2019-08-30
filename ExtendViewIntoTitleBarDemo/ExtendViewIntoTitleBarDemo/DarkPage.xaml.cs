@@ -13,28 +13,23 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
-// https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x804 上介绍了“空白页”项模板
+// https://go.microsoft.com/fwlink/?LinkId=234238 上介绍了“空白页”项模板
 
 namespace ExtendViewIntoTitleBarDemo
 {
     /// <summary>
     /// 可用于自身或导航至 Frame 内部的空白页。
     /// </summary>
-    public sealed partial class MainPage : Page
+    public sealed partial class DarkPage : Page
     {
-        public MainPage()
+        public DarkPage()
         {
             this.InitializeComponent();
         }
 
-        private void OnGotoDarkPage(object sender, RoutedEventArgs e)
+        private void OnBack(object sender, RoutedEventArgs e)
         {
-            Frame.Navigate(typeof(DarkPage));
-        }
-
-        private void OnGotoLightPage(object sender, RoutedEventArgs e)
-        {
-            Frame.Navigate(typeof(LightPage));
+            Frame.GoBack();
         }
     }
 }
